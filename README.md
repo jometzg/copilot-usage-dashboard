@@ -196,6 +196,10 @@ If rows appear, data is flowing end-to-end. If the table is empty after sending 
 terraform -chdir=terraform destroy
 ```
 
-## Detailed Guide
+## Detailed Guides
 
-See [plan.md](plan.md) for a full walkthrough including Terraform resource descriptions, verification steps, and security notes.
+| Guide | Description |
+|---|---|
+| [plan.md](plan.md) | Full Terraform-based walkthrough including resource descriptions, verification steps, and security notes |
+| [manual-setup.md](manual-setup.md) | Step-by-step Azure Portal / CLI setup using a Storage file share mount for `config.yaml`, Key Vault for the connection string, and Managed Grafana dashboard import |
+| [portal-setup.md](portal-setup.md) | Same setup using the Azure Portal as much as possible — minimal CLI, step-by-step UI instructions for every resource |
