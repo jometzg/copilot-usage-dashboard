@@ -1,0 +1,75 @@
+### post a metric to test the collector endpoint
+POST {collector-endpoint}/v1/traces
+Content-Type: application/json
+
+{
+  "resourceSpans": [
+    {
+      "resource": {
+        "attributes": [
+          {
+            "key": "service.name",
+            "value": {
+              "stringValue": "copilot-metrics"
+            }
+          },
+          {
+            "key": "environment",
+            "value": {
+              "stringValue": "production"
+            }
+          }
+        ]
+      },
+      "scopeSpans": [
+        {
+          "scope": {
+            "name": "copilot-usage"
+          },
+          "spans": [
+            {
+              "traceId": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6",
+              "spanId": "f1e2d3c4b5a69876",
+              "name": "copilot_completion_request",
+              "kind": 2,
+              "startTimeUnixNano": "1710000000000000000",
+              "endTimeUnixNano": "1710000000150000000",
+              "attributes": [
+                {
+                  "key": "user.id",
+                  "value": {
+                    "stringValue": "user-123"
+                  }
+                },
+                {
+                  "key": "editor",
+                  "value": {
+                    "stringValue": "vscode"
+                  }
+                },
+                {
+                  "key": "completions_requested",
+                  "value": {
+                    "intValue": "1"
+                  }
+                },
+                {
+                  "key": "completions_accepted",
+                  "value": {
+                    "intValue": "1"
+                  }
+                },
+                {
+                  "key": "latency_ms",
+                  "value": {
+                    "intValue": "150"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
