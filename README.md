@@ -100,6 +100,96 @@ location            = "northeurope"    # Azure region
 resource_group_name = "copilot-dashboard-rg"
 ```
 
+## Troubleshooting
+
+### 1. Test that the Container App is accepting telemetry
+
+Send a minimal OTLP/HTTP request directly to the collector endpoint using `curl`. A `200` or `204` response confirms the Container App is reachable and the receiver is running:
+
+```bash
+FQDN=$(terraform -chdir=terraform output -raw container_app_fqdn)
+
+curl -i -X POST "https://${FQDN}/v1/traces" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "resourceSpans": [{
+      "resource": { "attributes": [] },
+      "scopeSpans": [{
+        "scope": { "name": "test" },
+        "spans": [{
+          "traceId": "00000000000000000000000000000001",
+          "spanId": "0000000000000001",
+          "name": "test-span",
+          "kind": 1,
+          "startTimeUnixNano": "1700000000000000000",
+          "endTimeUnixNano":   "1700000001000000000",
+          "status": {}
+        }]
+      }]
+    }]
+  }'
+```
+
+Expected response: `HTTP/2 200` with an empty `{}` body.
+
+If you get a connection error or `404`, check:
+- The Container App revision is running: **Azure Portal → Container App → Revisions**
+- The image has been pushed and the app updated (Step 3 of Quick Start)
+- Ingress is enabled and `target_port` is `4318`: **Container App → Ingress**
+
+To inspect live logs from the collector:
+
+```bash
+az containerapp logs show \
+  --name copilot-dash-collector \
+  --resource-group copilot-dashboard-rg \
+  --follow
+```
+
+Look for lines containing `POST /v1/traces` (access log) or `Traces` / `ScopeSpans` (debug exporter output).
+
+---
+
+### 2. Verify the collector is pushing data into Application Insights
+
+**Check the collector logs for export errors:**
+
+```bash
+az containerapp logs show \
+  --name copilot-dash-collector \
+  --resource-group copilot-dashboard-rg \
+  --follow
+```
+
+A successful export looks like:
+
+```
+TracesExporter  {"kind": "exporter", "data_type": "traces", "name": "azuremonitor", "resource spans": 1, ...}
+```
+
+Errors such as `Exporting failed` or `connection refused` indicate the `APPLICATIONINSIGHTS_CONNECTION_STRING` environment variable is missing or incorrect. Verify it is set on the Container App:
+
+```bash
+az containerapp show \
+  --name copilot-dash-collector \
+  --resource-group copilot-dashboard-rg \
+  --query "properties.template.containers[0].env"
+```
+
+**Query Application Insights directly:**
+
+Open Application Insights in the Azure Portal → **Logs** and run:
+
+```kusto
+dependencies
+| where timestamp > ago(1h)
+| take 20
+```
+
+If rows appear, data is flowing end-to-end. If the table is empty after sending a test span (above), allow 2–3 minutes for ingestion lag and retry. If still empty, confirm the connection string in the environment variable matches the one shown in **Application Insights → Overview → Connection String**.
+
+---
+
 ## Tear Down
 
 ```bash
