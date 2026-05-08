@@ -1,0 +1,26 @@
+### Agent sessions
+
+dependencies
+| extend dims = todynamic(customDimensions)
+| extend op = coalesce(tostring(dims["gen_ai.operation.name"]), name)
+| where op has "invoke_agent"
+| extend agent = coalesce(tostring(dims["copilot_chat.mode_name"]), tostring(dims["agent.name"]))
+| extend session  = coalesce(tostring(dims["session.id"]), tostring(dims["gen_ai.conversation.id"]))
+| where isnotempty(agent) and isnotempty(session)
+| summarize invocations=count() by session, agent
+| order by invocations desc
+
+### countries
+dependencies
+| where timestamp > ago(24h)
+| project timestamp, client_CountryOrRegion, client_StateOrProvince, client_City, client_IP
+| take 50
+
+### dependencies
+dependencies
+| where timestamp > ago(24h)
+| take 200
+| extend dims = todynamic(customDimensions)
+| mv-expand k = bag_keys(dims)
+| summarize hits=count() by key=tostring(k)
+| order by hits desc
