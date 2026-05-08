@@ -66,6 +66,9 @@ provider "azurerm" {
   features {}
 }
 
+# Used by Key Vault tenant_id, KV role assignments, and Grafana Admin role
+data "azurerm_client_config" "current" {}
+
 # ── Resource Group ────────────────────────────────────────────────────────────
 
 resource "azurerm_resource_group" "rg" {
@@ -91,6 +94,34 @@ resource "azurerm_application_insights" "ai" {
   resource_group_name = azurerm_resource_group.rg.name
   workspace_id        = azurerm_log_analytics_workspace.law.id
   application_type    = "web"
+}
+
+# ── Key Vault (stores App Insights connection string) ────────────────────────
+
+resource "azurerm_key_vault" "kv" {
+  name                       = "${var.prefix}-kv"
+  location                   = azurerm_resource_group.rg.location
+  resource_group_name        = azurerm_resource_group.rg.name
+  tenant_id                  = data.azurerm_client_config.current.tenant_id
+  sku_name                   = "standard"
+  enable_rbac_authorization  = true
+  soft_delete_retention_days = 7
+  purge_protection_enabled   = false
+}
+
+resource "azurerm_key_vault_secret" "ai_conn_str" {
+  name         = "AppInsightsConnectionString"
+  value        = azurerm_application_insights.ai.connection_string
+  key_vault_id = azurerm_key_vault.kv.id
+
+  depends_on = [azurerm_role_assignment.kv_admin_deployer]
+}
+
+# Allow the deploying user to manage secrets during provisioning
+resource "azurerm_role_assignment" "kv_admin_deployer" {
+  scope                = azurerm_key_vault.kv.id
+  role_definition_name = "Key Vault Secrets Officer"
+  principal_id         = data.azurerm_client_config.current.object_id
 }
 
 # ── Container Registry ────────────────────────────────────────────────────────
@@ -141,16 +172,22 @@ resource "azurerm_container_app" "collector" {
       memory = "1Gi"
 
       env {
-        name  = "APPLICATIONINSIGHTS_CONNECTION_STRING"
-        value = azurerm_application_insights.ai.connection_string
+        name        = "APPLICATIONINSIGHTS_CONNECTION_STRING"
+        secret_name = "appinsights-conn-str"
       }
     }
   }
 
+  secret {
+    name                = "appinsights-conn-str"
+    key_vault_secret_id = azurerm_key_vault_secret.ai_conn_str.versionless_id
+    identity            = "System"
+  }
+
   ingress {
     external_enabled = true
-    # Use "http2" transport for gRPC (port 4317); use "http" for OTLP/HTTP (port 4318).
-    # VS Code uses OTLP/HTTP by default — set transport = "http" and target_port = 4318.
+    # OTLP/HTTP on port 4318 — matches github.copilot.chat.otel.exporterType = "otlp-http"
+    # For gRPC clients (port 4317) change transport to "http2" and target_port to 4317
     transport = "http"
 
     traffic_weight {
@@ -162,11 +199,19 @@ resource "azurerm_container_app" "collector" {
   }
 }
 
-# ── AcrPull role for Container App managed identity ───────────────────────────
+# ── AcrPull role — Container App managed identity → ACR ──────────────────────
 
 resource "azurerm_role_assignment" "acr_pull" {
   scope                = azurerm_container_registry.acr.id
   role_definition_name = "AcrPull"
+  principal_id         = azurerm_container_app.collector.identity[0].principal_id
+}
+
+# ── Key Vault Secrets User — Container App managed identity → Key Vault ───────
+
+resource "azurerm_role_assignment" "kv_secrets_user" {
+  scope                = azurerm_key_vault.kv.id
+  role_definition_name = "Key Vault Secrets User"
   principal_id         = azurerm_container_app.collector.identity[0].principal_id
 }
 
@@ -189,7 +234,7 @@ resource "azurerm_dashboard_grafana" "grafana" {
   }
 }
 
-# ── Monitoring Reader for Grafana managed identity ────────────────────────────
+# ── Monitoring Reader — Grafana managed identity → resource group ─────────────
 
 resource "azurerm_role_assignment" "grafana_monitoring_reader" {
   scope                = azurerm_resource_group.rg.id
@@ -197,8 +242,7 @@ resource "azurerm_role_assignment" "grafana_monitoring_reader" {
   principal_id         = azurerm_dashboard_grafana.grafana.identity[0].principal_id
 }
 
-# Grant the current user Grafana Admin so they can log in
-data "azurerm_client_config" "current" {}
+# ── Grafana Admin — grant the deploying user access to the Grafana UI ─────────
 
 resource "azurerm_role_assignment" "grafana_admin" {
   scope                = azurerm_dashboard_grafana.grafana.id

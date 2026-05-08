@@ -30,7 +30,9 @@ Azure Managed Grafana
 | `grafana-agent-usage-geo.json` | Grafana dashboard JSON — import this into your Managed Grafana instance |
 | `KQL-queries.txt` | Sample KQL queries for exploring raw data in Application Insights |
 | `terraform/` | Terraform code to provision all required Azure infrastructure |
-| `plan.md` | Detailed step-by-step build guide |
+| `plan.md` | Detailed step-by-step build guide (Terraform path) |
+| `manual-setup.md` | CLI-based manual setup using a Storage file share and Key Vault |
+| `portal-setup.md` | Step-by-step Azure Portal setup with minimal CLI |
 
 ## Quick Start
 
@@ -51,7 +53,7 @@ terraform plan -out=tfplan
 terraform apply tfplan
 ```
 
-This creates: a resource group, Log Analytics workspace, Application Insights, Container Registry, Container App Environment, OTel Collector Container App (public HTTPS), and Azure Managed Grafana — with all required role assignments.
+This creates: a resource group, Log Analytics workspace, Application Insights, Key Vault (storing the App Insights connection string as a secret), Container Registry, Container App Environment, OTel Collector Container App (public HTTPS), and Azure Managed Grafana — with all required role assignments.
 
 ### 3. Build and push the collector image
 
