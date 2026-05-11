@@ -6,6 +6,15 @@ Visualise GitHub Copilot usage across your organisation using OpenTelemetry, Azu
 
 VS Code sends Copilot telemetry (chat sessions, agent invocations, token usage, geographic data) via OTLP to a self-hosted OTel Collector running on Azure Container Apps. The collector forwards the data to Application Insights, where it is queried by a Grafana dashboard.
 
+## Sample Agents and Skills
+
+This repository includes sample custom agents and skills that can be used to generate test activity for the dashboard:
+
+- Agents: `.github/agents/analysis.agent.md`, `.github/agents/python-review.agent.md`
+- Skills: `.github/skills/csv-analysis/SKILL.md`, `.github/skills/python-review/SKILL.md`
+
+Use these samples to exercise agent invocations and chat workflows in VS Code, then validate that telemetry appears in Application Insights and Grafana.
+
 ## Architecture
 
 ```
