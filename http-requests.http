@@ -1,5 +1,5 @@
 ### post a metric to test the collector endpoint
-POST {collector-endpoint}/v1/traces
+POST https://collectorv2.purpleocean-eb978143.uksouth.azurecontainerapps.io/v1/traces
 Content-Type: application/json
 
 {
