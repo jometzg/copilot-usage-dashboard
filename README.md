@@ -96,6 +96,32 @@ Restart VS Code. Telemetry will begin flowing as soon as you use Copilot Chat.
 
 ### 5. Import the Grafana dashboard
 
+**Authentication Setup:**
+Managed Grafana authenticates to Azure Monitor using its system-assigned managed identity. For Grafana to query Application Insights data, the managed identity must have the **Monitoring Reader** role assigned on the Log Analytics workspace (which backs Application Insights).
+
+This role assignment is typically created automatically by the Terraform provisioning script. Verify it exists:
+
+```bash
+GRAFANA_PRINCIPAL_ID=$(terraform -chdir=terraform output -raw grafana_principal_id)
+az role assignment list \
+  --scope "/subscriptions/{subscription-id}/resourceGroups/copilot-dashboard-rg/providers/Microsoft.OperationalInsights/workspaces/copilot-la-workspace" \
+  --query "[?principalId=='${GRAFANA_PRINCIPAL_ID}'].{role:roleDefinitionName, principal:principalId}"
+```
+
+If the role assignment is missing, grant **Monitoring Reader** permission manually:
+
+```bash
+GRAFANA_PRINCIPAL_ID=$(terraform -chdir=terraform output -raw grafana_principal_id)
+WORKSPACE_ID=$(terraform -chdir=terraform output -raw log_analytics_workspace_id)
+
+az role assignment create \
+  --role "Monitoring Reader" \
+  --assignee-object-id "${GRAFANA_PRINCIPAL_ID}" \
+  --scope "${WORKSPACE_ID}"
+```
+
+**Dashboard Import:**
+
 1. Open the Managed Grafana instance (`terraform -chdir=terraform output -raw grafana_endpoint`)
 2. **Connections → Data sources → Add** → **Azure Monitor** → Authentication: **Managed Identity** → **Save & Test**
 3. **Dashboards → Import → Upload JSON file** → select `grafana-agent-usage-geo.json`
