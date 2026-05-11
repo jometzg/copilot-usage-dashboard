@@ -405,6 +405,73 @@ az grafana dashboard import \
   --definition @grafana-agent-usage-geo.json
 ```
 
+### 7.6 Dashboard Security and End-User Authentication
+
+Azure Managed Grafana integrates with Azure Active Directory (Azure AD) for authentication and authorization, controlling which users can view dashboards and whether they can edit them.
+
+#### Authentication
+
+When users access the Grafana instance, they authenticate via Azure AD:
+
+1. In Grafana, go to **Administration → Settings → Authentication**
+2. Azure AD is the default authentication provider for Managed Grafana
+3. Users must be members of the Azure subscription or have explicit Azure AD access to the Managed Grafana resource
+4. Access is controlled via Azure RBAC roles assigned at the Managed Grafana resource scope
+
+#### Role-Based Access Control (RBAC)
+
+Managed Grafana supports the following built-in Azure roles:
+
+- **Grafana Admin** — Full access; can create, edit, and delete dashboards and data sources
+- **Grafana Editor** — Can create and edit dashboards; cannot modify data sources
+- **Grafana Viewer** — Read-only access; can view dashboards but cannot edit them
+
+#### Restrict Users to View-Only
+
+To ensure end users cannot modify dashboards:
+
+1. Assign these users the **Grafana Viewer** role only:
+
+```bash
+az role assignment create \
+  --role "Grafana Viewer" \
+  --assignee "<user_object_id>" \
+  --scope "${GRAFANA_ID}"
+```
+
+2. Alternatively, remove **Grafana Editor** and **Grafana Admin** roles and keep only **Grafana Viewer**:
+
+```bash
+az role assignment delete \
+  --role "Grafana Editor" \
+  --assignee "<user_object_id>" \
+  --scope "${GRAFANA_ID}"
+```
+
+With the **Grafana Viewer** role, users can only:
+- View dashboards
+- View panels and charts
+- Use dashboard variables and filters
+
+Users **cannot**:
+- Create or edit dashboards
+- Modify data sources
+- Change settings or provisioning
+- Access the administration panel
+
+#### Assign Roles
+
+To grant a user access to Grafana with a specific role:
+
+```bash
+USER_OID=$(az ad user show --upn <user_email> --query id -o tsv)
+
+az role assignment create \
+  --role "Grafana Viewer" \
+  --assignee "${USER_OID}" \
+  --scope "${GRAFANA_ID}"
+```
+
 ---
 
 ## Step 8 — Configure VS Code
