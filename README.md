@@ -1,5 +1,7 @@
 # GitHub Copilot Usage Dashboard
 
+When creating and using GitHub Copilot custom agents, there is no easy way "out of the box" to measure their usage and uptake in organisation, so this project is an attempt to build a solution to fill this gap.
+
 Visualise GitHub Copilot usage across your organisation using OpenTelemetry, Azure Application Insights, and Azure Managed Grafana.
 
 ![Sample dashboard](sample-dashboard.png)
