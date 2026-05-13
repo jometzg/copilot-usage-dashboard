@@ -174,8 +174,6 @@ resource "azurerm_dashboard_grafana" "grafana" {
   public_network_access_enabled = true
   api_key_enabled               = true
 
-  azure_monitor_workspace_integrations = []
-
   identity {
     type = "SystemAssigned"
   }
