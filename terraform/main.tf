@@ -114,7 +114,7 @@ resource "azurerm_container_app" "collector" {
   template {
     container {
       name   = "otel-collector"
-      image  = "${azurerm_container_registry.acr.login_server}/otel-collector:latest"
+      image  = "${azurerm_container_registry.acr.login_server}/${var.image_repository}:${var.image_tag}"
       cpu    = 0.5
       memory = "1Gi"
 

@@ -55,33 +55,43 @@ Azure Managed Grafana
 - [Docker](https://docs.docker.com/get-docker/)
 - VS Code with a **GitHub Copilot Business or Enterprise** licence
 
-### 2. Provision Azure infrastructure
+### 2. Bootstrap core infrastructure (creates ACR first)
 
 ```bash
-cd terraform
-terraform init
-terraform plan -out=tfplan
-terraform apply tfplan
+terraform -chdir=terraform init
+terraform -chdir=terraform validate
+
+# First pass: create only the registry prerequisites so we can push the custom image
+terraform -chdir=terraform apply \
+  -target=azurerm_resource_group.rg \
+  -target=azurerm_container_registry.acr
 ```
 
-This creates: a resource group, Log Analytics workspace, Application Insights, Key Vault (storing the App Insights connection string as a secret), Container Registry, Container App Environment, OTel Collector Container App (public HTTPS), and Azure Managed Grafana — with all required role assignments.
+This first pass creates the resource group and Azure Container Registry, which is required before pushing your custom collector image.
 
-### 3. Build and push the collector image
+### 3. Build and push the collector image (immutable tag)
 
 ```bash
 ACR=$(terraform -chdir=terraform output -raw acr_login_server)
 az acr login --name "${ACR%%.*}"
-docker build -t ${ACR}/otel-collector:latest .
-docker push ${ACR}/otel-collector:latest
 
-# Trigger a new Container App revision to pull the image
-az containerapp update \
-  --name copilot-dash-collector \
-  --resource-group copilot-dashboard-rg \
-  --image ${ACR}/otel-collector:latest
+# Use a unique tag (for example git SHA) instead of latest
+IMAGE_TAG=$(git rev-parse --short HEAD)
+
+docker build -t ${ACR}/otel-collector:${IMAGE_TAG} .
+docker push ${ACR}/otel-collector:${IMAGE_TAG}
 ```
 
-### 4. Configure VS Code
+### 4. Provision/update all resources with the pushed image
+
+```bash
+terraform -chdir=terraform plan -var "image_tag=${IMAGE_TAG}" -out=tfplan
+terraform -chdir=terraform apply tfplan
+```
+
+This full apply creates the remaining resources (Log Analytics, Application Insights, Key Vault, Container App Environment, OTel Collector Container App, Grafana, and role assignments) and points the Container App to the exact image tag you pushed.
+
+### 5. Configure VS Code
 
 Add the following to your VS Code **User Settings** (`settings.json`), replacing `<fqdn>` with the output of `terraform -chdir=terraform output -raw container_app_fqdn`:
 
@@ -96,7 +106,7 @@ Add the following to your VS Code **User Settings** (`settings.json`), replacing
 
 Restart VS Code. Telemetry will begin flowing as soon as you use Copilot Chat.
 
-### 5. Import the Grafana dashboard
+### 6. Import the Grafana dashboard
 
 **Authentication Setup:**
 Managed Grafana authenticates to Azure Monitor using its system-assigned managed identity. For Grafana to query Application Insights data, the managed identity must have the **Monitoring Reader** role assigned on the Log Analytics workspace (which backs Application Insights).
@@ -134,10 +144,14 @@ az role assignment create \
 Override defaults by creating `terraform/terraform.tfvars`:
 
 ```hcl
-prefix              = "copilot-dash"   # prefix for all resource names
-location            = "northeurope"    # Azure region
+prefix              = "copilot-dash"       # prefix for all resource names
+location            = "uksouth"            # Azure region
 resource_group_name = "copilot-dashboard-rg"
+image_repository    = "otel-collector"     # repository in ACR
+image_tag           = "latest"             # override in CI, e.g. git SHA
 ```
+
+For repeatable deployments, set `image_tag` to an immutable value (for example your commit SHA) in your pipeline instead of relying on `latest`.
 
 ## Troubleshooting
 
@@ -173,7 +187,7 @@ Expected response: `HTTP/2 200` with an empty `{}` body.
 
 If you get a connection error or `404`, check:
 - The Container App revision is running: **Azure Portal → Container App → Revisions**
-- The image has been pushed and the app updated (Step 3 of Quick Start)
+- The image has been pushed and Step 4 (`terraform apply` with `image_tag`) completed
 - Ingress is enabled and `target_port` is `4318`: **Container App → Ingress**
 
 To inspect live logs from the collector:

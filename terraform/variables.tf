@@ -15,3 +15,15 @@ variable "resource_group_name" {
   type        = string
   default     = "copilot-dashboard-rg"
 }
+
+variable "image_repository" {
+  description = "Container image repository name in ACR."
+  type        = string
+  default     = "otel-collector"
+}
+
+variable "image_tag" {
+  description = "Container image tag to deploy. Use immutable tags in CI/CD (for example, git SHA)."
+  type        = string
+  default     = "latest"
+}
