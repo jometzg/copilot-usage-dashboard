@@ -13,12 +13,6 @@
   "__requires": [
     {
       "type": "panel",
-      "id": "barchart",
-      "name": "Bar chart",
-      "version": ""
-    },
-    {
-      "type": "panel",
       "id": "gauge",
       "name": "Gauge",
       "version": ""
@@ -573,145 +567,8 @@
       },
       "id": 21,
       "panels": [],
-      "title": "Token Usage & Cost Analysis",
+      "title": "Token Usage",
       "type": "row"
-    },
-    {
-      "datasource": {
-        "type": "grafana-azure-monitor-datasource",
-        "uid": "${am_ds}"
-      },
-      "description": "Stacked time series chart showing input and output token usage trends over time, helping monitor AI model consumption and associated costs.",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "Tokens",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 25,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "showValues": false,
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "normal"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": 0
-              }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Input Tokens"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "blue",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Output Tokens"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "green",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 9,
-        "x": 0,
-        "y": 14
-      },
-      "id": 4,
-      "interval": "1h",
-      "maxDataPoints": 50,
-      "options": {
-        "legend": {
-          "calcs": [
-            "sum"
-          ],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "multi",
-          "sort": "none"
-        }
-      },
-      "pluginVersion": "12.3.1",
-      "targets": [
-        {
-          "azureLogAnalytics": {
-            "dashboardTime": true,
-            "query": "let agentNames = dynamic([$agentName]);\ndependencies \n| where name contains \"invoke_agent\"\n| extend agent_name = tostring(customDimensions[\"gen_ai.agent.name\"])\n| where isnotempty(agent_name)\n| where array_length(agentNames) > 0\n| where agent_name in (agentNames)\n| extend \n    input_tokens = toint(customDimensions[\"gen_ai.usage.input_tokens\"]),\n    output_tokens = toint(customDimensions[\"gen_ai.usage.output_tokens\"])\n| summarize \n    ['Input Tokens'] = sum(input_tokens),\n    ['Output Tokens'] = sum(output_tokens)\n    by bin(timestamp, $__interval)",
-            "resources": [
-              "/subscriptions/$sub/resourceGroups/$rg/providers/microsoft.insights/components/$res"
-            ],
-            "resultFormat": "time_series",
-            "timeColumn": "timestamp"
-          },
-          "datasource": {
-            "type": "grafana-azure-monitor-datasource",
-            "uid": "${DS_AZURE_MONITOR}"
-          },
-          "queryType": "Azure Log Analytics",
-          "refId": "A"
-        }
-      ],
-      "title": "Token Consumption Over Time",
-      "type": "timeseries"
     },
     {
       "datasource": {
@@ -738,11 +595,11 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 6,
-        "x": 9,
+        "w": 11,
+        "x": 0,
         "y": 14
       },
-      "id": 5,
+      "id": 25,
       "options": {
         "displayLabels": [
           "name",
@@ -798,89 +655,68 @@
         "type": "grafana-azure-monitor-datasource",
         "uid": "${am_ds}"
       },
-      "description": "Bar chart estimating daily operational costs based on token consumption and model pricing. Rates are configurable in the query (example: $1.25 per 1M input tokens, $10 per 1M output tokens).",
+      "description": "Donut chart showing the distribution of total token consumption (input + output) across different models, helping identify which agents consume the most resources.",
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "continuous-GrYlRd"
+            "mode": "palette-classic"
           },
           "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "Cost ($)",
-            "axisPlacement": "auto",
-            "fillOpacity": 80,
-            "gradientMode": "none",
             "hideFrom": {
               "legend": false,
               "tooltip": false,
               "viz": false
-            },
-            "lineWidth": 1,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
             }
           },
           "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": 0
-              }
-            ]
-          },
-          "unit": "currencyUSD"
+          "unit": "short"
         },
         "overrides": []
       },
       "gridPos": {
         "h": 8,
-        "w": 6,
-        "x": 15,
+        "w": 10,
+        "x": 11,
         "y": 14
       },
-      "id": 6,
+      "id": 26,
       "options": {
-        "barRadius": 0,
-        "barWidth": 0.97,
-        "colorByField": "estimated_cost",
-        "fullHighlight": false,
-        "groupWidth": 0.7,
+        "displayLabels": [
+          "name",
+          "percent"
+        ],
         "legend": {
-          "calcs": [
-            "sum"
-          ],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "values": [
+            "value"
+          ]
         },
-        "orientation": "auto",
-        "showValue": "auto",
-        "stacking": "none",
+        "pieType": "donut",
+        "reduceOptions": {
+          "calcs": [],
+          "fields": "",
+          "values": true
+        },
+        "sort": "desc",
         "tooltip": {
           "hideZeros": false,
           "mode": "single",
           "sort": "none"
-        },
-        "xTickLabelRotation": 0,
-        "xTickLabelSpacing": 100
+        }
       },
       "pluginVersion": "12.3.1",
       "targets": [
         {
           "azureLogAnalytics": {
             "dashboardTime": true,
-            "query": "let agentNames = dynamic([$agentName]);\ndependencies \n| where name contains \"invoke_agent\"\n| extend agent_name = tostring(customDimensions[\"gen_ai.agent.name\"])\n| where isnotempty(agent_name)\n| where array_length(agentNames) > 0\n| where agent_name in (agentNames)\n| extend \n    input_tokens = toint(customDimensions[\"gen_ai.usage.input_tokens\"]),\n    output_tokens = toint(customDimensions[\"gen_ai.usage.output_tokens\"])\n| extend \n    // Adjust these rates based on your model pricing (example: GPT-5 mini pricing)\n    input_cost = input_tokens * 0.00000025,   // $0.25 per 1M input tokens\n    output_cost = output_tokens * 0.000002    // $2 per 1M output tokens\n| summarize \n    estimated_cost = sum(input_cost + output_cost)\n    by bin(timestamp, 1d)\n| order by timestamp asc",
+            "mode": "raw",
+            "query": "let agentNames = dynamic([$agentName]);\ndependencies \n| where name contains \"invoke_agent\"\n| extend dims = todynamic(customDimensions)\n| extend model_name = tostring(dims[\"gen_ai.response.model\"])\n| where isnotempty(model_name)\n| extend \n    input_tokens = toint(customDimensions[\"gen_ai.usage.input_tokens\"]),\n    output_tokens = toint(customDimensions[\"gen_ai.usage.output_tokens\"])\n| summarize \n    total_tokens = sum(input_tokens + output_tokens)\n    by model_name",
             "resources": [
               "/subscriptions/$sub/resourceGroups/$rg/providers/microsoft.insights/components/$res"
             ],
-            "resultFormat": "time_series",
+            "resultFormat": "table",
             "timeColumn": "timestamp"
           },
           "datasource": {
@@ -891,8 +727,8 @@
           "refId": "A"
         }
       ],
-      "title": "Daily Cost Estimation",
-      "type": "barchart"
+      "title": "Token Usage by Model",
+      "type": "piechart"
     },
     {
       "collapsed": false,
@@ -1465,8 +1301,8 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "Copilot-Agent-Usage-With-Geo",
-  "uid": "subscriptions~1885038d-f891-46b7-9c02-128ed13a7f06~resourceGroups~agent-monitoring-rg~providers~Microsoft.Dashboard~dashboards~Copilot-Agent-Usage-With-Geo",
-  "version": 5,
+  "title": "Dashboard-05-08-2026-17-22",
+  "uid": "subscriptions~1885038d-f891-46b7-9c02-128ed13a7f06~resourceGroups~agent-monitoring-rg~providers~Microsoft.Dashboard~dashboards~Dashboard-05-08-2026-17-22",
+  "version": 4,
   "weekStart": ""
 }
