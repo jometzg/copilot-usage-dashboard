@@ -95,6 +95,14 @@ resource "azurerm_container_app_environment" "env" {
   log_analytics_workspace_id = azurerm_log_analytics_workspace.law.id
 }
 
+# ── User-Assigned Identity for Container App bootstrap permissions ───────────
+
+resource "azurerm_user_assigned_identity" "collector" {
+  name                = "${var.prefix}-collector-uai"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+}
+
 # ── Container App (OTel Collector) ────────────────────────────────────────────
 
 resource "azurerm_container_app" "collector" {
@@ -104,12 +112,13 @@ resource "azurerm_container_app" "collector" {
   revision_mode                = "Single"
 
   identity {
-    type = "SystemAssigned"
+    type         = "UserAssigned"
+    identity_ids = [azurerm_user_assigned_identity.collector.id]
   }
 
   registry {
     server   = azurerm_container_registry.acr.login_server
-    identity = "system"
+    identity = azurerm_user_assigned_identity.collector.id
   }
 
   template {
@@ -129,7 +138,7 @@ resource "azurerm_container_app" "collector" {
   secret {
     name                = "appinsights-conn-str"
     key_vault_secret_id = azurerm_key_vault_secret.ai_conn_str.versionless_id
-    identity            = "System"
+    identity            = azurerm_user_assigned_identity.collector.id
   }
 
   ingress {
@@ -152,7 +161,7 @@ resource "azurerm_container_app" "collector" {
 resource "azurerm_role_assignment" "acr_pull" {
   scope                = azurerm_container_registry.acr.id
   role_definition_name = "AcrPull"
-  principal_id         = azurerm_container_app.collector.identity[0].principal_id
+  principal_id         = azurerm_user_assigned_identity.collector.principal_id
 }
 
 # ── Key Vault Secrets User — Container App managed identity → Key Vault ───────
@@ -160,7 +169,7 @@ resource "azurerm_role_assignment" "acr_pull" {
 resource "azurerm_role_assignment" "kv_secrets_user" {
   scope                = azurerm_key_vault.kv.id
   role_definition_name = "Key Vault Secrets User"
-  principal_id         = azurerm_container_app.collector.identity[0].principal_id
+  principal_id         = azurerm_user_assigned_identity.collector.principal_id
 }
 
 # ── Azure Managed Grafana ─────────────────────────────────────────────────────
