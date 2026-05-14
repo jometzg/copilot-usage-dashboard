@@ -51,6 +51,7 @@ Azure Managed Grafana
 
 - Azure subscription with **Contributor** rights
 - [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli) — `az login`
+- Azure CLI Managed Grafana extension: `az extension add --name amg`
 - [Terraform](https://developer.hashicorp.com/terraform/install) ≥ 1.5
 - [Docker](https://docs.docker.com/get-docker/)
 - VS Code with a **GitHub Copilot Business or Enterprise** licence
@@ -106,7 +107,7 @@ Add the following to your VS Code **User Settings** (`settings.json`), replacing
 
 Restart VS Code. Telemetry will begin flowing as soon as you use Copilot Chat.
 
-### 6. Import the Grafana dashboard
+### 6. Import the Grafana dashboard (optional Terraform stage)
 
 **Authentication Setup:**
 Managed Grafana authenticates to Azure Monitor using its system-assigned managed identity. For Grafana to query Application Insights data, the managed identity must have the **Monitoring Reader** role assigned on the Log Analytics workspace (which backs Application Insights).
@@ -132,7 +133,20 @@ az role assignment create \
   --scope "${WORKSPACE_ID}"
 ```
 
-**Dashboard Import:**
+**Option A (recommended for repeatable deployments): Terraform-managed import**
+
+Run a dedicated apply that enables dashboard import:
+
+```bash
+terraform -chdir=terraform apply \
+  -target=terraform_data.grafana_dashboard_import \
+  -var "image_tag=${IMAGE_TAG}" \
+  -var "enable_grafana_dashboard_import=true"
+```
+
+This runs `az grafana dashboard import` from Terraform and overwrites the dashboard when the JSON file changes, without requiring a full infrastructure apply.
+
+**Option B: Manual import in Grafana UI**
 
 1. Open the Managed Grafana instance (`terraform -chdir=terraform output -raw grafana_endpoint`)
 2. **Connections → Data sources → Add** → **Azure Monitor** → Authentication: **Managed Identity** → **Save & Test**
@@ -149,6 +163,8 @@ location            = "uksouth"            # Azure region
 resource_group_name = "copilot-dashboard-rg"
 image_repository    = "otel-collector"     # repository in ACR
 image_tag           = "latest"             # override in CI, e.g. git SHA
+enable_grafana_dashboard_import = false     # set true to import dashboard via Terraform
+grafana_dashboard_definition_path = "../grafana-agent-usage-geo.json"
 ```
 
 For repeatable deployments, set `image_tag` to an immutable value (for example your commit SHA) in your pipeline instead of relying on `latest`.

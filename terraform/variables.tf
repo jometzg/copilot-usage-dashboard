@@ -33,3 +33,15 @@ variable "image_tag" {
   type        = string
   default     = "latest"
 }
+
+variable "enable_grafana_dashboard_import" {
+  description = "If true, Terraform imports the dashboard JSON into Managed Grafana using Azure CLI."
+  type        = bool
+  default     = false
+}
+
+variable "grafana_dashboard_definition_path" {
+  description = "Path to the Grafana dashboard JSON file, relative to terraform/ directory."
+  type        = string
+  default     = "../grafana-agent-usage-geo.json"
+}

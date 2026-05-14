@@ -204,3 +204,32 @@ resource "azurerm_role_assignment" "grafana_admin" {
   role_definition_name = "Grafana Admin"
   principal_id         = data.azurerm_client_config.current.object_id
 }
+
+# ── Optional: Import dashboard JSON into Managed Grafana via Azure CLI ───────
+
+resource "terraform_data" "grafana_dashboard_import" {
+  count = var.enable_grafana_dashboard_import ? 1 : 0
+
+  # Re-run import when dashboard file changes.
+  triggers_replace = {
+    dashboard_sha = filesha256(var.grafana_dashboard_definition_path)
+  }
+
+  provisioner "local-exec" {
+    interpreter = ["/bin/bash", "-c"]
+    command = <<-EOT
+      set -euo pipefail
+      az grafana dashboard import \
+        --resource-group "${azurerm_resource_group.rg.name}" \
+        --name "${azurerm_dashboard_grafana.grafana.name}" \
+        --definition "@${var.grafana_dashboard_definition_path}" \
+        --overwrite true \
+        --output none
+    EOT
+  }
+
+  depends_on = [
+    azurerm_dashboard_grafana.grafana,
+    azurerm_role_assignment.grafana_admin,
+  ]
+}
