@@ -2,13 +2,14 @@ terraform {
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
-      version = "~> 3.100"
+      version = ">= 4.2"
     }
   }
   required_version = ">= 1.5"
 }
 
 provider "azurerm" {
+  subscription_id = var.subscription_id
   features {}
 }
 
@@ -50,7 +51,7 @@ resource "azurerm_key_vault" "kv" {
   resource_group_name       = azurerm_resource_group.rg.name
   tenant_id                 = data.azurerm_client_config.current.tenant_id
   sku_name                  = "standard"
-  enable_rbac_authorization = true
+  rbac_authorization_enabled = true
   soft_delete_retention_days = 7
   purge_protection_enabled  = false
 }
@@ -169,7 +170,7 @@ resource "azurerm_dashboard_grafana" "grafana" {
   location                      = azurerm_resource_group.rg.location
   resource_group_name           = azurerm_resource_group.rg.name
   sku                           = "Standard"
-  grafana_major_version         = 10
+  grafana_major_version         = 12
   zone_redundancy_enabled       = false
   public_network_access_enabled = true
   api_key_enabled               = true

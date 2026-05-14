@@ -16,6 +16,12 @@ variable "resource_group_name" {
   default     = "copilot-dashboard-rg"
 }
 
+variable "subscription_id" {
+  description = "Azure subscription ID used by the azurerm provider."
+  type        = string
+  default     = "1885038d-f891-46b7-9c02-128ed13a7f06"
+}
+
 variable "image_repository" {
   description = "Container image repository name in ACR."
   type        = string
